@@ -1,7 +1,6 @@
 ---
 - name: Installer Docker et configurer les outils DevSecOps (SonarQube et Harbor)
   hosts: outils
-  become: yes
   vars:
     projet_dest: /opt/devsecops
   tasks:

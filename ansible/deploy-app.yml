@@ -1,7 +1,6 @@
 ---
 - name: Déployer l'application Marketplace en Production
   hosts: prod
-  become: yes
   vars:
     projet_dest: /opt/marketplace
     registry_url: harbor.mon-domaine.local
