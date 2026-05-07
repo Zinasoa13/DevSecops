@@ -12,28 +12,74 @@ pipeline {
     }
 
     stages {
-        stage('Checkout & Build') {
+        stage('Initialisation & Sync Code (Remote)') {
             steps {
-                echo "Récupération du code et compilation (Packaging) avec Maven..."
-                dir('marketplace') {
-                    // S'assurer que le wrapper Maven est exécutable sur Linux
-                    sh 'chmod +x mvnw'
-                    sh './mvnw clean package -DskipTests'
+                echo "Synchronisation du code vers l'hôte WSL via SSH..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+                    
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        
+                        // On utilise Ansible déjà présent sur le WSL pour copier les fichiers locaux
+                        sshCommand remote: remote, command: """
+                            cd /opt/devsecops/ansible && \
+                            ansible-playbook -i inventory.ini setup-tools.yml
+                        """
+                    }
                 }
             }
         }
 
-        stage('Test & Analyse Statique (SonarQube)') {
+        stage('Build Maven (Remote)') {
             steps {
-                echo "Lancement des tests avec analyse SonarQube..."
-                dir('marketplace') {
-                    withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
-                        sh """
-                        ./mvnw verify sonar:sonar \
-                          -Dsonar.projectKey=marketplace \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.login=${SONAR_TOKEN}
+                echo "Compilation Maven à distance sur l'hôte WSL..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+                    
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        
+                        sshCommand remote: remote, command: """
+                            cd /opt/devsecops/marketplace && \
+                            chmod +x mvnw && \
+                            ./mvnw clean package -DskipTests --no-transfer-progress
                         """
+                    }
+                }
+            }
+        }
+
+        stage('Test & Analyse Statique (Remote)') {
+            steps {
+                echo "Lancement des tests et SonarQube à distance..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+                    
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        
+                        withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/marketplace && \
+                                ./mvnw verify sonar:sonar \
+                                  -Dsonar.projectKey=marketplace \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.login=${SONAR_TOKEN}
+                            """
+                        }
                     }
                 }
             }
@@ -43,65 +89,80 @@ pipeline {
             steps {
                 echo "Attente de la validation du Quality Gate SonarQube..."
                 timeout(time: 5, unit: 'MINUTES') {
-                    // Attend que SonarQube donne le feu vert (nécessite le webhook Sonar -> Jenkins)
+                    // Toujours local à Jenkins car c'est une API call vers Sonar
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('Construction Image Docker') {
+        stage('Construction & Push Image Docker (Remote)') {
             steps {
-                echo "Construction de l'Image Docker via le Dockerfile multi-stage..."
-                dir('marketplace') {
-                    sh "docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest ."
-                }
-            }
-        }
-
-        stage('Push vers Harbor & Scan Trivy') {
-            steps {
-                echo "Envoi de l'image vers la registry Harbor (Tailscale) pour le stockage et scan Trivy..."
-                withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
-                    sh "docker login 100.115.122.20 -u \${HARBOR_USER} -p \${HARBOR_PASS}"
-                    sh "docker push ${DOCKER_IMAGE}:${env.BUILD_ID}"
-                    sh "docker push ${DOCKER_IMAGE}:latest"
-                }
-            }
-        }
-
-    stage('Déploiement Sécurisé avec Ansible (via SSH)') {
-        steps {
-            echo "Pilotage à distance d'Ansible sur l'hôte Ubuntu WSL via SSH..."
-            script {
-                def remote = [:]
-                remote.name = 'wsl-ubuntu'
-                remote.host = '100.115.122.20'
-                remote.allowAnyHosts = true
-                
-                withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                    remote.user = SSH_USER
-                    remote.password = SSH_PASS
+                echo "Construction et envoi de l'image Docker à distance..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
                     
-                    withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
-                        // Exécution du playbook Ansible resté sur l'hôte WSL
-                        sshCommand remote: remote, command: """
-                            cd /opt/devsecops/ansible && \
-                            ansible-playbook -i inventory.ini deploy-app.yml \
-                            --extra-vars "harbor_user=${HARBOR_USER} harbor_password=${HARBOR_PASS} db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
-                        """
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        
+                        withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/marketplace && \
+                                docker login 100.115.122.20 -u ${HARBOR_USER} -p ${HARBOR_PASS} && \
+                                docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
+                                docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
+                                docker push ${DOCKER_IMAGE}:latest
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Déploiement avec Ansible (Remote)') {
+            steps {
+                echo "Déploiement final via Ansible à distance..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+                    
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        
+                        withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/ansible && \
+                                ansible-playbook -i inventory.ini deploy-app.yml \
+                                --extra-vars "harbor_user=${HARBOR_USER} harbor_password=${HARBOR_PASS} db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
+                            """
+                        }
                     }
                 }
             }
         }
     }
-    }
     
     post {
         always {
-            echo "Nettoyage du workspace..."
+            echo "Nettoyage du workspace local..."
             cleanWs()
-            // Déconnexion Docker (IP Tailscale)
-            sh "docker logout 100.115.122.20 || exit 0"
+            script {
+                def remote = [:]
+                remote.name = 'wsl-ubuntu'
+                remote.host = '100.115.122.20'
+                remote.allowAnyHosts = true
+                withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                    remote.user = SSH_USER
+                    remote.password = SSH_PASS
+                    sshCommand remote: remote, command: "docker logout 100.115.122.20 || exit 0"
+                }
+            }
         }
         success {
             echo "Le déploiement sécurisé (DevSecOps) a été exécuté avec succès!"

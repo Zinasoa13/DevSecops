@@ -44,6 +44,11 @@
         src: ../serveurs/
         dest: "{{ projet_dest }}/serveurs/"
 
+    - name: Copier le code source de l'application Marketplace
+      copy:
+        src: ../marketplace/
+        dest: "{{ projet_dest }}/marketplace/"
+
     - name: Configurer la résolution DNS pour Harbor (Tailscale IP)
       lineinfile:
         path: /etc/hosts
