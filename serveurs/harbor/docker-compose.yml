@@ -1,0 +1,35 @@
+version: '3.8'
+# NOTE: Harbor génère en réalité ce fichier et d'autres depuis un script './prepare'
+# basé sur 'harbor.yml'. Ce fichier est une illustration pour que le playbook Ansible
+# le lance facilement comme un stack standard avec la registry et Trivy.
+services:
+  harbor-portal:
+    image: goharbor/harbor-portal:v2.10.0
+    container_name: harbor-portal
+    networks:
+      - harbor
+    ports:
+      - "80:8080"
+  
+  registry:
+    image: goharbor/registry-photon:v2.10.0
+    container_name: registry
+    networks:
+      - harbor
+    volumes:
+      - harbor_registry_data:/storage
+  
+  trivy-adapter:
+    image: goharbor/trivy-adapter-photon:v2.10.0
+    container_name: trivy-adapter
+    networks:
+      - harbor
+    ports:
+      - "8080:8080"
+
+networks:
+  harbor:
+    driver: bridge
+
+volumes:
+  harbor_registry_data:

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Produits</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h2 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logout-btn {
+            background: white;
+            color: #764ba2;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-section {
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            margin-bottom: 40px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-section h3 {
+            color: #333;
+            margin-bottom: 24px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+            align-items: end;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            background: #f8f9fa;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        input::placeholder {
+            color: #999;
+        }
+
+        .submit-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            align-self: flex-end;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out 0.2s backwards;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 18px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .delete-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .delete-link:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            h2 {
+                font-size: 24px;
+            }
+
+            .form-group {
+                grid-template-columns: 1fr;
+            }
+
+            .submit-btn {
+                width: 100%;
+            }
+
+            .form-section,
+            .table-section {
+                padding: 20px;
+            }
+
+            th, td {
+                padding: 12px 10px;
+                font-size: 13px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Gestion des Produits</h2>
+		<div style="display: flex; gap: 10px; align-items: center;">
+
+	        <!-- RACCOURCI PLUS SIMPLE : sec:authorize -->
+	        <a th:href="@{/utilisateurs}"
+	           sec:authorize="hasRole('ADMIN')"
+	           class="logout-btn"
+	           style="text-decoration: none; background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+	           👥 Utilisateurs
+	        </a>
+
+			<!-- Bouton de connexion -->
+			<form th:unless="${session.current_user}" th:action="@{/login}" method="get">
+			    <button type="submit" class="logout-btn">Se connecter</button>
+			</form>
+			<!-- Bouton de déconnexion -->
+			<form th:if="${session.current_user}" th:action="@{/logout}" method="get">
+			    <button type="submit" class="logout-btn">Se déconnecter</button>
+			</form>
+	    </div>
+    </div>
+
+	<div class="form-section">
+	    <!-- Le titre change selon si on ajoute ou on modifie -->
+	    <h3 th:text="${produit.id == null ? 'Ajouter un Nouveau Produit' : 'Modifier le Produit'}"></h3>
+
+	    <form th:action="@{/produits}" th:object="${produit}" method="post">
+	        <!-- CHAMP CACHÉ TRÈS IMPORTANT -->
+	        <input type="hidden" th:field="*{id}" />
+
+	        <div class="form-group">
+	            <div class="form-field">
+	                <label for="nom">Nom du Produit</label>
+	                <input type="text" th:field="*{nom}" placeholder="Ex: Laptop Pro" required/>
+	            </div>
+	            <div class="form-field">
+	                <label for="prix">Prix (€)</label>
+	                <input type="number" step="0.1" th:field="*{prix}" placeholder="99.99" required/>
+	            </div>
+	            <div class="form-field">
+	                <label for="categorie">Catégorie</label>
+	                <select th:field="*{categorie.id}" required>
+	                    <option value="">-- Sélectionner --</option>
+	                    <option th:each="c : ${categories}" th:value="${c.id}" th:text="${c.nom}"></option>
+	                </select>
+	            </div>
+
+	            <div style="display: flex; gap: 10px;">
+	                <button type="submit" class="submit-btn"
+	                        th:text="${produit.id == null ? 'Ajouter' : 'Enregistrer'}"></button>
+
+	                <!-- Bouton Annuler qui n'apparaît qu'en mode modification -->
+	                <a th:if="${produit.id != null}" th:href="@{/produits}"
+	                   class="delete-link" style="background: #666; text-decoration: none;">Annuler</a>
+	            </div>
+	        </div>
+	    </form>
+	</div>
+
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Prix</th>
+                    <th>Catégorie</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="p : ${produits}">
+                    <td th:text="${p.id}"></td>
+                    <td th:text="${p.nom}"></td>
+                    <td th:text="'€ ' + ${#numbers.formatDecimal(p.prix, 1, 2)}"></td>
+                    <td th:text="${p.categorie != null ? p.categorie.nom : 'Pas de catégorie'}"></td>
+                    <td>
+						<a class="delete-link" th:if="${session.current_user?.role?.name() == 'ADMIN'}" th:href="@{/produits/edit/{id}(id=${p.id})}" style="background: #9b67ef; color: #333;">Modifier</a>
+						<a class="delete-link" th:if="${session.current_user?.role?.name() == 'ADMIN'}" th:href="@{/produits/delete/{id}(id=${p.id})}">Supprimer</a>
+						<!-- Ton bouton Acheter -->
+						<form th:action="@{/produits/acheter/{id}(id=${p.id})}" method="post">
+						    <button type="submit" class="logout-btn">Acheter</button>
+						</form>
+
+					</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(produits)}">
+                    <td colspan="5" class="empty-state">
+                        <p>Aucun produit pour le moment. Créez-en un!</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+		<div th:if="${showModal}" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+
+		    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px;">
+		        <h2 style="color: #acdcec5b;">Scannez pour acheter</h2>
+
+		        <!-- Affichage du QR Code généré -->
+		        <img th:src="${qrCodeImage}" alt="QR Code" style="width: 250px; height: 250px;"/>
+
+		        <br/>
+
+		        <!-- Le bouton OK recharge juste la page de base, ce qui "ferme" la boîte -->
+		        <a th:href="@{/produits}" class="logout-btn" style="text-decoration: none; display: inline-block; background: #333; color: white; padding: 10px 25px; border-radius: 5px;">OK</a>
+		    </div>
+
+		</div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  marketplace-app:
+    image: harbor.mon-domaine.local/marketplace/app:latest
+    container_name: marketplace_app
+    ports:
+      - "8082:8082"
+    environment:
+      # Injectées soit par .env soit par Ansible au déploiement en Prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST:-marketplace-db}:${DB_PORT:-3306}/${DB_NAME:-marketplace}?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=${DB_USER:-root}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-root}
+      - SPRING_MAIL_HOST=smtp.gmail.com
+      - SPRING_MAIL_PORT=587
+      - SPRING_MAIL_USERNAME=${MAIL_USER}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
+    networks:
+      - marketplace_net
+    volumes:
+      - qrcodes_data:/app/qrcodes
+    depends_on:
+      - marketplace-db
+
+  marketplace-db:
+    image: mysql:8.0
+    container_name: marketplace_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
+      - MYSQL_DATABASE=${DB_NAME:-marketplace}
+    networks:
+      - marketplace_net
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  marketplace_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  qrcodes_data:

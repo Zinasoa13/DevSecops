@@ -1,0 +1,46 @@
+---
+- name: Déployer l'application Marketplace en Production
+  hosts: prod
+  become: yes
+  vars:
+    projet_dest: /opt/marketplace
+    registry_url: harbor.mon-domaine.local
+    # Ces identifiants pourront être injectés via Ansible Vault ou Jenkins Credentials (extraVars)
+    registry_user: "{{ harbor_user }}"
+    registry_password: "{{ harbor_password }}"
+  
+  tasks:
+    - name: Créer le répertoire de destination
+      file:
+        path: "{{ projet_dest }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copier le fichier docker-compose de production
+      copy:
+        src: ../marketplace/docker-compose.yml
+        dest: "{{ projet_dest }}/docker-compose.yml"
+
+    - name: S'authentifier sur Harbor
+      docker_login:
+        registry: "{{ registry_url }}"
+        username: "{{ registry_user }}"
+        password: "{{ registry_password }}"
+
+    - name: Démarrer ou mettre à jour la stack de production (App + MySQL)
+      command: docker compose up -d --pull always
+      args:
+        chdir: "{{ projet_dest }}"
+      environment:
+        # Variables d'environnement pour configurer l'application dynamiquement (sans secrets en dur)
+        DB_USER: "{{ db_user }}"
+        DB_PASSWORD: "{{ db_password }}"
+        MAIL_USER: "{{ mail_user }}"
+        MAIL_PASSWORD: "{{ mail_password }}"
+
+    - name: Vérifier que l'application est bien en ligne (Port 8082)
+      wait_for:
+        port: 8082
+        delay: 15
+        timeout: 120
+        msg: "L'application Marketplace n'est pas accessible sur le port 8082."

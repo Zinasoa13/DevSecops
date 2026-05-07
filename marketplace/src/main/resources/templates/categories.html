@@ -1,0 +1,19 @@
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<h2>Categories</h2>
+<form th:action="@{/categories}" method="post">
+    Nom: <input type="text" name="nom"/>
+    <button type="submit">Ajouter</button>
+</form>
+<table border="1">
+<tr><th>ID</th><th>Nom</th><th>Action</th></tr>
+<tr th:each="c : ${categories}">
+<td th:text="${c.id}"></td>
+<td th:text="${c.nom}"></td>
+<td><a th:href="@{/categories/delete/{id}(id=${c.id})}">Supprimer</a></td>
+</tr>
+</table>
+</body>
+</html>

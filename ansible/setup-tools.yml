@@ -1,0 +1,85 @@
+---
+- name: Installer Docker et configurer les outils DevSecOps (SonarQube et Harbor)
+  hosts: outils
+  become: yes
+  vars:
+    projet_dest: /opt/devsecops
+  tasks:
+    - name: Installer les dépendances requises
+      apt:
+        name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release, python3-pip, python3-docker]
+        state: present
+        update_cache: yes
+
+    - name: Ajouter la clé GPG officielle de Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Configurer le dépôt Docker
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+        state: present
+
+    - name: Installer Docker Engine et Docker Compose
+      apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin, docker-compose]
+        state: present
+
+    - name: Démarrer Docker (Compatibilité WSL2)
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      ignore_errors: yes
+
+    - name: Créer le répertoire de destination pour les outils
+      file:
+        path: "{{ projet_dest }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copier les répertoires serveurs vers le serveur d'outils
+      copy:
+        src: ../serveurs/
+        dest: "{{ projet_dest }}/serveurs/"
+
+    - name: Configurer la résolution DNS pour Harbor (Tailscale IP)
+      lineinfile:
+        path: /etc/hosts
+        line: "100.115.122.20 harbor.mon-domaine.local"
+        state: present
+
+    - name: Configurer Harbor comme registre non-sécurisé dans Docker
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "insecure-registries": ["harbor.mon-domaine.local"]
+          }
+      notify: Redémarrer Docker
+
+    # ATTENTION: vm.max_map_count au moins égal à 262144 est exigé par Elasticsearch embarqué dans SonarQube
+    - name: Configurer vm.max_map_count pour SonarQube
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+      ignore_errors: yes
+
+    - name: Lancer SonarQube et PostgreSQL via docker compose
+      command: docker compose up -d
+      args:
+        chdir: "{{ projet_dest }}/serveurs/sonarqube"
+
+    - name: Lancer Harbor et Trivy via docker compose 
+      command: docker compose up -d
+      args:
+        chdir: "{{ projet_dest }}/serveurs/harbor"
+
+  handlers:
+    - name: Redémarrer Docker
+      service:
+        name: docker
+        state: restarted

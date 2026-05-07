@@ -1,0 +1,80 @@
+C'est quoi l'application ?
+* C'est une application de marketplace
+
+Combien y a t-il de type d'users ?
+* admin et utilisateurs simples
+
+Que peut faire l'admin et que peut faire l'utilisateur simple ?
+* admin : gère les utilisateurs (crée, modifie, supprime), gère les produits, scanner un code qr pour acheter un produit
+* utilisateur simple : peut ajouter un nouveau produit, scanner un qr code pour acheter un produit
+
+Comment as-tu géré les règles de permissions?
+* côté back:
+--> en utilisant un champ Role de type enum
+--> Utilisateur controller:
+  - envoie un /POST /login
+  - si user.getRole().equals(Role.ADMIN) : redirect:/utilisateurs
+  - sinon : redirect:/produits
+
+* côté front:
+--> th:if="${session.current_user != null and session.current_user.role.name() == 'ADMIN'}"
+
+Comment gère tu la règles de sécurité des comptes?
+* en utilisant la vérification OTP
+
+Comment implémente t-on la vérification de l'OTP?
+* Utilisateur controller
+--> envoie un /POST /login
+--> envoie un /POST /verify-otp
+--> envoie un redirect vers sa page d'accueil
+
+* Utilisateur service
+--> sendOtp(user)
+--> verify(user, otp) --> throw new IllegalArgumentException("Wrong code or expired. Please try again.");
+
+* OTP service
+--> generate()
+
+Comment marche le QR Code ?
+* Produit controller :
+--> envoie un /POST /produits/acheter/{id}
+  - récupération de l'email du vendeur
+  - construction du message MATMSG
+  - génération du QR Code
+  - envoie du QR Code au front
+
+* QrCodeEncoder :
+--> génère le QR Code
+
+* QrCodeUrlParser :
+--> parse le QR Code
+
+Comment le calendrier est-t-il dynamique du coté technique ?
+* TableCalendar :
+--> On utilise le package `table_calendar` pour gérer l'affichage et les interactions.
+--> `onPageChanged` : Dès que l'utilisateur swipe pour changer de mois, cette fonction appelle `_loadData()`.
+* _loadData() :
+--> Récupère les présences via `DatabaseService.getMonthlyAttendance(userId, focusedDay)`.
+--> Remplit automatiquement les jours passés non enregistrés comme "absent" (pour les jours ouvrés).
+--> Met à jour la map `_attendanceMap`.
+* CalendarBuilders :
+--> Personnalise chaque cellule dynamiquement selon le statut contenu dans la map (couleurs, icônes).
+
+Quel est le flow du dynamisme ?
+1. L'utilisateur change de mois ou ouvre la page.
+2. `_loadData()` est déclenché.
+3. Affichage d'un loader pendant la récupération des données (Firebase).
+4. Une fois les données reçues, `setState()` est appelé pour rafraîchir l'UI.
+5. Les constructeurs du calendrier (builders) parcourent la map pour styliser chaque jour en temps réel.
+6. Les statistiques en bas sont recalculées automatiquement en fonction de la nouvelle map.
+
+À quoi sert concrètement le code de chargement (L83-106) ?
+* Normalisation des données : Le code ne se contente pas de lire la base de données. Il parcourt chaque jour du mois jusqu'à aujourd'hui.
+* Détection automatique des absences : Si un jour ouvré (lundi-vendredi) n'a pas d'entrée dans la base de données, le code lui attribue dynamiquement le statut "absent". Cela évite de devoir stocker manuellement chaque absence.
+* Préparation du State : Il construit une `fullMap` complète avant de l'injecter dans le `setState()` pour garantir une mise à jour fluide de l'UI.
+
+Comment Flutter gère-t-il le dynamisme du changement de statut ?
+* État Réactif (setState) : Dès que `_attendanceMap` est mise à jour dans `setState()`, Flutter redessine les widgets dépendants.
+* Builders Dynamiques : `TableCalendar` utilise des fonctions "builders" (`calendarBuilders`). Pour chaque jour affiché, ces fonctions consultent la `_attendanceMap`.
+* Changement Visuel Instantané : Si le statut d'un jour change (ex: de "absent" à "present"), le builder renvoie instantanément un widget avec une couleur différente (`_presentGreen` au lieu de `_absentRed`) et une icône spécifique.
+* Micro-animations : L'utilisation de `TweenAnimationBuilder` et `AnimatedContainer` permet de rendre ces changements de statut visuellement fluides avec des transitions de couleurs et d'échelles.

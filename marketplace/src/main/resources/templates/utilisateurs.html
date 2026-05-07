@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Utilisateurs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h2 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logout-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .logout-btn {
+            background: white;
+            color: #764ba2;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-section {
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            margin-bottom: 40px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 24px;
+            font-size: 22px;
+        }
+
+        .form-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+            align-items: end;
+        }
+
+        .form-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        select {
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            background: #f8f9fa;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        input::placeholder {
+            color: #999;
+        }
+
+        .submit-btn {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            align-self: flex-end;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+            margin: 40px 0;
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out 0.2s backwards;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 18px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .role-admin {
+            color: #667eea;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .role-user {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .btn-delete {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #ff6b6b;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-delete:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+
+            .form-group {
+                grid-template-columns: 1fr;
+            }
+
+            .submit-btn {
+                width: 100%;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .table-section {
+                padding: 0;
+            }
+
+            th, td {
+                padding: 12px 10px;
+                font-size: 13px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Gestion des Utilisateurs</h2>
+		<div style="display: flex; gap: 10px; align-items: center;">
+	        <!-- Bouton pour aller aux produits -->
+	        <a th:if="${session.current_user != null and session.current_user.role.name() == 'ADMIN'}"
+			   th:href="@{/produits}"
+	           class="logout-btn"
+	           style="text-decoration: none; background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+	           📦 Produits
+	        </a>
+
+
+			<!-- Bouton de connexion -->
+			<form th:unless="${session.current_user}" th:action="@{/login}" method="get">
+			    <button type="submit" class="logout-btn">Se connecter</button>
+			</form>
+	        <!-- Bouton de déconnexion -->
+			<form th:if="${session.current_user}" th:action="@{/logout}" method="get">
+			    <button type="submit" class="logout-btn">Se déconnecter</button>
+			</form>
+	    </div>
+    </div>
+
+    <div class="form-section">
+        <h2>Ajouter un Nouvel Utilisateur</h2>
+
+        <form th:action="@{/utilisateurs}" th:object="${utilisateur}" method="post">
+            <div class="form-group">
+                <div class="form-field">
+                    <label for="nom">Nom Complet</label>
+                    <input type="text" id="nom" th:field="*{nom}" placeholder="Ex: Jean Dupont" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" th:field="*{email}" placeholder="Ex: jean@mail.com" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="password">Mot de Passe</label>
+                    <input type="password" id="password" th:field="*{password}" placeholder="••••••••" required />
+                </div>
+
+                <div class="form-field">
+                    <label for="role">Rôle</label>
+                    <select id="role" th:field="*{role}" required>
+                        <option value="">-- Sélectionner un rôle --</option>
+                        <option value="USER">Utilisateur Simple</option>
+                        <option value="ADMIN">Administrateur</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="submit-btn">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="u : ${utilisateurs}">
+                    <td th:text="${u.id}"></td>
+                    <td th:text="${u.nom}"></td>
+                    <td th:text="${u.email}"></td>
+                    <td>
+                        <span th:class="${u.role.name() == 'ADMIN' ? 'role-admin' : 'role-user'}"
+                              th:text="${u.role.name() == 'ADMIN' ? 'Admin' : 'Utilisateur'}">
+                        </span>
+                    </td>
+                    <td>
+                        <a th:href="@{/utilisateurs/delete/{id}(id=${u.id})}"
+                           class="btn-delete"
+                           onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')">
+                            Supprimer
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(utilisateurs)}">
+                    <td colspan="5" class="empty-state">
+                        <p>Aucun utilisateur enregistré. Créez-en un!</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
