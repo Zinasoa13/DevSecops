@@ -58,6 +58,7 @@ pipeline {
                         remote.password = SSH_PASS
                         
                         sshCommand remote: remote, command: """
+                            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
                             cd /opt/devsecops/marketplace && \
                             chmod +x mvnw && \
                             ./mvnw clean package -DskipTests --no-transfer-progress
@@ -82,6 +83,7 @@ pipeline {
                         
                         withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
                             sshCommand remote: remote, command: """
+                                export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
                                 cd /opt/devsecops/marketplace && \
                                 ./mvnw verify sonar:sonar \
                                   -Dsonar.projectKey=marketplace \
