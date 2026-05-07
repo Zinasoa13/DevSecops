@@ -29,9 +29,10 @@ pipeline {
                         sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
                         
                         // 2. Envoyer les dossiers nécessaires depuis le workspace Jenkins vers le remote
-                        echo "Transfert des scripts Ansible et du code source..."
+                        echo "Transfert des scripts Ansible, du code source et des configurations serveurs..."
                         sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
                         sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
+                        sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
                         
                         // 3. Lancer le playbook de configuration sur le remote
                         sshCommand remote: remote, command: """
