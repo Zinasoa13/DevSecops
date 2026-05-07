@@ -25,7 +25,15 @@ pipeline {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
                         
-                        // On utilise Ansible déjà présent sur le WSL pour copier les fichiers locaux
+                        // 1. Créer le dossier parent sur le remote
+                        sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
+                        
+                        // 2. Envoyer les dossiers nécessaires depuis le workspace Jenkins vers le remote
+                        echo "Transfert des scripts Ansible et du code source..."
+                        sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
+                        sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
+                        
+                        // 3. Lancer le playbook de configuration sur le remote
                         sshCommand remote: remote, command: """
                             cd /opt/devsecops/ansible && \
                             ansible-playbook -i inventory.ini setup-tools.yml
