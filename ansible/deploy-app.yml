@@ -3,10 +3,7 @@
   hosts: prod
   vars:
     projet_dest: /opt/marketplace
-    registry_url: harbor.mon-domaine.local
-    # Ces identifiants pourront être injectés via Ansible Vault ou Jenkins Credentials (extraVars)
-    registry_user: "{{ harbor_user }}"
-    registry_password: "{{ harbor_password }}"
+    # Plus besoin de registry_url, Docker Hub est le défaut.
   
   tasks:
     - name: Créer le répertoire de destination
@@ -19,12 +16,6 @@
       copy:
         src: ../marketplace/docker-compose.yml
         dest: "{{ projet_dest }}/docker-compose.yml"
-
-    - name: S'authentifier sur Harbor
-      docker_login:
-        registry: "{{ registry_url }}"
-        username: "{{ registry_user }}"
-        password: "{{ registry_password }}"
 
     - name: Démarrer ou mettre à jour la stack de production (App + MySQL)
       command: docker compose up -d --pull always
