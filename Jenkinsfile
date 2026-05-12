@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Définir les variables globales avec l'IP Tailscale stable
-        DOCKER_IMAGE = 'zinasoa13/marketplace-app'
+        DOCKER_IMAGE = 'sushibaka/marketplace-app'
         SONAR_HOST_URL = 'http://100.115.122.20:9000'
         // IDs des credentials configurés dans Jenkins
         SONAR_CREDENTIALS_ID = 'sonarqube-token'
@@ -21,20 +21,20 @@ pipeline {
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
                     remote.timeout = 60000 // Augmenter le timeout à 60s
-                    
+
                     retry(3) { // Ajouter des retries pour gérer les micro-coupures
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             echo "Test de connexion et création du dossier..."
                             sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
-                            
+
                             echo "Transfert des fichiers (Ansible, Marketplace, Serveurs)..."
                             sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
                             sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
                             sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
-                            
+
                             echo "Exécution du playbook d'infrastructure..."
                             sshCommand remote: remote, command: """
                                 cd /opt/devsecops/ansible && \
@@ -55,12 +55,12 @@ pipeline {
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
                     remote.timeout = 60000
-                    
+
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             sshCommand remote: remote, command: """
                                 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
                                 cd /opt/devsecops/marketplace && \
@@ -82,12 +82,12 @@ pipeline {
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
                     remote.timeout = 300000 // 5 minutes pour l'analyse et le Quality Gate
-                    
+
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
                                 sshCommand remote: remote, command: """
                                     export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
@@ -109,7 +109,7 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 echo "Quality Gate déjà validé par le scanner distant."
-                /* 
+                /*
                 timeout(time: 5, unit: 'MINUTES') {
                     // Désactivé car l'analyse est distante (SSH)
                     waitForQualityGate abortPipeline: true
@@ -127,12 +127,12 @@ pipeline {
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
                     remote.timeout = 60000
-                    
+
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                                 sshCommand remote: remote, command: """
                                     cd /opt/devsecops/marketplace && \
@@ -157,12 +157,12 @@ pipeline {
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
                     remote.timeout = 60000
-                    
+
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
                                 sshCommand remote: remote, command: """
                                     cd /opt/devsecops/ansible && \
@@ -176,7 +176,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             echo "Nettoyage du workspace local..."
@@ -187,7 +187,7 @@ pipeline {
                 remote.host = '100.115.122.20'
                 remote.allowAnyHosts = true
                 remote.timeout = 20000 // 20s pour le logout
-                
+
                 retry(3) {
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
