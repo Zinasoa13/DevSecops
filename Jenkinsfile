@@ -81,7 +81,7 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
-                    remote.timeout = 60000
+                    remote.timeout = 300000 // 5 minutes pour l'analyse et le Quality Gate
                     
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
@@ -94,6 +94,7 @@ pipeline {
                                     cd /opt/devsecops/marketplace && \
                                     ./mvnw sonar:sonar -DskipTests \
                                       -Dsonar.ws.timeout=300 \
+                                      -Dsonar.qualitygate.wait=true \
                                       -Dsonar.projectKey=marketplace \
                                       -Dsonar.host.url=${SONAR_HOST_URL} \
                                       -Dsonar.login=${SONAR_TOKEN}
@@ -107,11 +108,13 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo "Attente de la validation du Quality Gate SonarQube..."
+                echo "Quality Gate déjà validé par le scanner distant."
+                /* 
                 timeout(time: 5, unit: 'MINUTES') {
-                    // Toujours local à Jenkins car c'est une API call vers Sonar
+                    // Désactivé car l'analyse est distante (SSH)
                     waitForQualityGate abortPipeline: true
                 }
+                */
             }
         }
 
