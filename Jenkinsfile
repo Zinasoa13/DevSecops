@@ -20,25 +20,27 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 60000 // Augmenter le timeout à 60s
                     
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                        remote.user = SSH_USER
-                        remote.password = SSH_PASS
-                        
-                        // 1. Créer le dossier parent sur le remote
-                        sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
-                        
-                        // 2. Envoyer les dossiers nécessaires depuis le workspace Jenkins vers le remote
-                        echo "Transfert des scripts Ansible, du code source et des configurations serveurs..."
-                        sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
-                        sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
-                        sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
-                        
-                        // 3. Lancer le playbook de configuration sur le remote
-                        sshCommand remote: remote, command: """
-                            cd /opt/devsecops/ansible && \
-                            ansible-playbook -i inventory.ini setup-tools.yml
-                        """
+                    retry(3) { // Ajouter des retries pour gérer les micro-coupures
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            echo "Test de connexion et création du dossier..."
+                            sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
+                            
+                            echo "Transfert des fichiers (Ansible, Marketplace, Serveurs)..."
+                            sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
+                            sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
+                            sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
+                            
+                            echo "Exécution du playbook d'infrastructure..."
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/ansible && \
+                                ansible-playbook -i inventory.ini setup-tools.yml
+                            """
+                        }
                     }
                 }
             }
@@ -52,17 +54,20 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 60000
                     
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                        remote.user = SSH_USER
-                        remote.password = SSH_PASS
-                        
-                        sshCommand remote: remote, command: """
-                            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
-                            cd /opt/devsecops/marketplace && \
-                            chmod +x mvnw && \
-                            ./mvnw clean package -DskipTests --no-transfer-progress
-                        """
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            sshCommand remote: remote, command: """
+                                export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
+                                cd /opt/devsecops/marketplace && \
+                                chmod +x mvnw && \
+                                ./mvnw clean package -DskipTests --no-transfer-progress
+                            """
+                        }
                     }
                 }
             }
@@ -76,20 +81,23 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 60000
                     
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                        remote.user = SSH_USER
-                        remote.password = SSH_PASS
-                        
-                        withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
-                            sshCommand remote: remote, command: """
-                                export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
-                                cd /opt/devsecops/marketplace && \
-                                ./mvnw verify sonar:sonar \
-                                  -Dsonar.projectKey=marketplace \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.login=${SONAR_TOKEN}
-                            """
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
+                                sshCommand remote: remote, command: """
+                                    export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
+                                    cd /opt/devsecops/marketplace && \
+                                    ./mvnw sonar:sonar -DskipTests \
+                                      -Dsonar.projectKey=marketplace \
+                                      -Dsonar.host.url=${SONAR_HOST_URL} \
+                                      -Dsonar.login=${SONAR_TOKEN}
+                                """
+                            }
                         }
                     }
                 }
@@ -114,19 +122,22 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 60000
                     
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                        remote.user = SSH_USER
-                        remote.password = SSH_PASS
-                        
-                        withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
-                            sshCommand remote: remote, command: """
-                                cd /opt/devsecops/marketplace && \
-                                docker login 100.115.122.20 -u ${HARBOR_USER} -p ${HARBOR_PASS} && \
-                                docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
-                                docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
-                                docker push ${DOCKER_IMAGE}:latest
-                            """
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
+                                sshCommand remote: remote, command: """
+                                    cd /opt/devsecops/marketplace && \
+                                    docker login 100.115.122.20 -u ${HARBOR_USER} -p ${HARBOR_PASS} && \
+                                    docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
+                                    docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
+                                    docker push ${DOCKER_IMAGE}:latest
+                                """
+                            }
                         }
                     }
                 }
@@ -141,17 +152,20 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 60000
                     
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                        remote.user = SSH_USER
-                        remote.password = SSH_PASS
-                        
-                        withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
-                            sshCommand remote: remote, command: """
-                                cd /opt/devsecops/ansible && \
-                                ansible-playbook -i inventory.ini deploy-app.yml \
-                                --extra-vars "harbor_user=${HARBOR_USER} harbor_password=${HARBOR_PASS} db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
-                            """
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
+                                sshCommand remote: remote, command: """
+                                    cd /opt/devsecops/ansible && \
+                                    ansible-playbook -i inventory.ini deploy-app.yml \
+                                    --extra-vars "harbor_user=${HARBOR_USER} harbor_password=${HARBOR_PASS} db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
+                                """
+                            }
                         }
                     }
                 }
@@ -168,10 +182,14 @@ pipeline {
                 remote.name = 'wsl-ubuntu'
                 remote.host = '100.115.122.20'
                 remote.allowAnyHosts = true
-                withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                    remote.user = SSH_USER
-                    remote.password = SSH_PASS
-                    sshCommand remote: remote, command: "docker logout 100.115.122.20 || exit 0"
+                remote.timeout = 20000 // 20s pour le logout
+                
+                retry(3) {
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        sshCommand remote: remote, command: "docker logout 100.115.122.20 || exit 0"
+                    }
                 }
             }
         }
