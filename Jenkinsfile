@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Définir les variables globales avec l'IP Tailscale stable
-        DOCKER_IMAGE = '100.115.122.20/marketplace/app'
+        DOCKER_IMAGE = '100.115.122.20:5000/marketplace/app'
         SONAR_HOST_URL = 'http://100.115.122.20:9000'
         // IDs des credentials configurés dans Jenkins
         SONAR_CREDENTIALS_ID = 'sonarqube-token'
@@ -136,7 +136,7 @@ pipeline {
                             withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
                                 sshCommand remote: remote, command: """
                                     cd /opt/devsecops/marketplace && \
-                                    docker login 100.115.122.20 -u ${HARBOR_USER} -p ${HARBOR_PASS} && \
+                                    docker login 100.115.122.20:5000 -u ${HARBOR_USER} -p ${HARBOR_PASS} && \
                                     docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
                                     docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
                                     docker push ${DOCKER_IMAGE}:latest
@@ -192,7 +192,7 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
-                        sshCommand remote: remote, command: "docker logout 100.115.122.20 || exit 0"
+                        sshCommand remote: remote, command: "docker logout 100.115.122.20:5000 || exit 0"
                     }
                 }
             }

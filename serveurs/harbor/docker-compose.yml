@@ -1,35 +1,25 @@
 version: '3.8'
-# NOTE: Harbor génère en réalité ce fichier et d'autres depuis un script './prepare'
-# basé sur 'harbor.yml'. Ce fichier est une illustration pour que le playbook Ansible
-# le lance facilement comme un stack standard avec la registry et Trivy.
 services:
-  harbor-portal:
-    image: goharbor/harbor-portal:v2.10.0
-    container_name: harbor-portal
-    networks:
-      - harbor
-    ports:
-      - "80:8080"
-  
+  # Le stockage des images (le coeur)
   registry:
-    image: goharbor/registry-photon:v2.10.0
-    container_name: registry
-    networks:
-      - harbor
-    volumes:
-      - harbor_registry_data:/storage
-  
-  trivy-adapter:
-    image: goharbor/trivy-adapter-photon:v2.10.0
-    container_name: trivy-adapter
-    networks:
-      - harbor
+    image: registry:2
+    container_name: harbor-registry
+    restart: always
     ports:
-      - "8081:8080"
+      - "5000:5000"
+    environment:
+      REGISTRY_HTTP_SECRET: devsecops-secret
 
-networks:
-  harbor:
-    driver: bridge
-
-volumes:
-  harbor_registry_data:
+  # L'interface visuelle (pour voir tes images dans le navigateur)
+  registry-ui:
+    image: joxit/docker-registry-ui:static
+    container_name: harbor-ui
+    restart: always
+    ports:
+      - "8181:80"
+    environment:
+      - REGISTRY_TITLE=Mon_Harbor_Marketplace
+      - REGISTRY_URL=http://100.115.122.20:5000
+      - SINGLE_REGISTRY=true
+    depends_on:
+      - registry
