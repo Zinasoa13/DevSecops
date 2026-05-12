@@ -93,6 +93,7 @@ pipeline {
                                     export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
                                     cd /opt/devsecops/marketplace && \
                                     ./mvnw sonar:sonar -DskipTests \
+                                      -Dsonar.ws.timeout=300 \
                                       -Dsonar.projectKey=marketplace \
                                       -Dsonar.host.url=${SONAR_HOST_URL} \
                                       -Dsonar.login=${SONAR_TOKEN}
