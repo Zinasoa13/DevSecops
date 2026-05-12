@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   marketplace-app:
-    image: zinasoa13/marketplace-app:latest
+    image: sushibaka/marketplace-app:latest
     container_name: marketplace_app
     ports:
       - "8082:8082"

@@ -136,7 +136,7 @@ pipeline {
                             withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                                 sshCommand remote: remote, command: """
                                     cd /opt/devsecops/marketplace && \
-                                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin && \
+                                    echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin && \
                                     docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
                                     docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
                                     docker push ${DOCKER_IMAGE}:latest
@@ -163,13 +163,11 @@ pipeline {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
 
-                            withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDENTIALS_ID}", passwordVariable: 'HARBOR_PASS', usernameVariable: 'HARBOR_USER')]) {
-                                sshCommand remote: remote, command: """
-                                    cd /opt/devsecops/ansible && \
-                                    ansible-playbook -i inventory.ini deploy-app.yml \
-                                    --extra-vars "harbor_user=${HARBOR_USER} harbor_password=${HARBOR_PASS} db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
-                                """
-                            }
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/ansible && \
+                                ansible-playbook -i inventory.ini deploy-app.yml \
+                                --extra-vars "db_user='admin' db_password='Secr3tPasswordDB!' mail_user='contact@marketplace.com' mail_password='Secr3tPasswordMail!'"
+                            """
                         }
                     }
                 }
