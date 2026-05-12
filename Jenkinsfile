@@ -27,8 +27,9 @@ pipeline {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
 
-                            echo "Test de connexion et création du dossier..."
+                            echo "Test de connexion et sécurisation des droits..."
                             sshCommand remote: remote, command: "mkdir -p /opt/devsecops"
+                            sshCommand remote: remote, command: "echo ${SSH_PASS} | sudo -S chown -R ${SSH_USER}:${SSH_USER} /opt/devsecops"
 
                             echo "Transfert des fichiers (Ansible, Marketplace, Serveurs)..."
                             sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'

@@ -4,6 +4,11 @@
   vars:
     projet_dest: /opt/devsecops
   tasks:
+    - name: Ajouter la clé GPG de Trivy
+      apt_key:
+        url: https://aquasecurity.github.io/trivy-repo/dabest.gpg
+        state: present
+
     - name: Installer les dépendances requises
       apt:
         name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release, python3-pip, python3-docker, openjdk-17-jdk]
