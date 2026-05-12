@@ -118,9 +118,57 @@ pipeline {
             }
         }
 
-        stage('Construction & Push Image Docker (Remote)') {
+        stage('Construction Image Docker (Remote)') {
             steps {
-                echo "Construction et envoi de l'image Docker à distance..."
+                echo "Construction de l'image Docker à distance..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+                    remote.timeout = 60000
+
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+
+                            sshCommand remote: remote, command: """
+                                cd /opt/devsecops/marketplace && \
+                                docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest .
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Sécurité : Scan Trivy (Remote)') {
+            steps {
+                echo "Analyse de l'image pour les vulnérabilités..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+
+                    retry(3) {
+                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            sshCommand remote: remote, command: """
+                                trivy image --severity HIGH,CRITICAL --exit-code 0 ${DOCKER_IMAGE}:${env.BUILD_ID}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push Image Docker (Remote)') {
+            steps {
+                echo "Envoi de l'image vers Docker Hub..."
                 script {
                     def remote = [:]
                     remote.name = 'wsl-ubuntu'
@@ -135,13 +183,43 @@ pipeline {
 
                             withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
                                 sshCommand remote: remote, command: """
-                                    cd /opt/devsecops/marketplace && \
                                     echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin && \
-                                    docker build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest . && \
                                     docker push ${DOCKER_IMAGE}:${env.BUILD_ID} && \
                                     docker push ${DOCKER_IMAGE}:latest
                                 """
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Sécurité : Signature Cosign (Remote)') {
+            steps {
+                echo "Signature de l'image Docker..."
+                script {
+                    def remote = [:]
+                    remote.name = 'wsl-ubuntu'
+                    remote.host = '100.115.122.20'
+                    remote.allowAnyHosts = true
+
+                    retry(3) {
+                        withCredentials([
+                            usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
+                            string(credentialsId: 'COSIGN_PASSWORD', variable: 'COSIGN_PWD'),
+                            file(credentialsId: 'COSIGN_KEY', variable: 'KEY_FILE')
+                        ]) {
+                            remote.user = SSH_USER
+                            remote.password = SSH_PASS
+                            
+                            // On transfère temporairement la clé sur le serveur pour signer
+                            sshPut remote: remote, from: "${KEY_FILE}", into: "/tmp/cosign.key"
+                            
+                            sshCommand remote: remote, command: """
+                                export COSIGN_PASSWORD=${COSIGN_PWD} && \
+                                cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID} && \
+                                rm /tmp/cosign.key
+                            """
                         }
                     }
                 }
