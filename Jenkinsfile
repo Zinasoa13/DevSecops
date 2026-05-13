@@ -20,25 +20,31 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
-                    remote.timeout = 60000 // Augmenter le timeout à 60s
+                    remote.timeout = 60000
 
-                    retry(3) { // Ajouter des retries pour gérer les micro-coupures
+                    retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
 
                             echo "Test de connexion et sécurisation des droits..."
-                            sshCommand remote: remote, command: "sudo mkdir -p /opt/devsecops && sudo chown -R \$(whoami):\$(whoami) /opt/devsecops"
+                            // Utilisation de echo $SSH_PASS | sudo -S pour passer le mot de passe automatiquement
+                            sshCommand remote: remote, command: """
+                                echo '${SSH_PASS}' | sudo -S mkdir -p /opt/devsecops && \
+                                echo '${SSH_PASS}' | sudo -S chown -R ${SSH_USER} /opt/devsecops
+                            """
 
                             echo "Transfert des fichiers (Ansible, Marketplace, Serveurs)..."
+                            // Maintenant SFTP va fonctionner car le dossier t'appartient !
                             sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
                             sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
                             sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
 
                             echo "Exécution du playbook d'infrastructure..."
+                            // On passe le mot de passe à Ansible via ansible_become_pass pour qu'il puisse installer Docker
                             sshCommand remote: remote, command: """
                                 cd /opt/devsecops/ansible && \
-                                ansible-playbook -i inventory.ini setup-tools.yml
+                                ansible-playbook -i inventory.ini setup-tools.yml --extra-vars "ansible_become_pass='${SSH_PASS}'"
                             """
                         }
                     }

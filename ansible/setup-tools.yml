@@ -1,16 +1,19 @@
 ---
 - name: Installer Docker et configurer les outils DevSecOps (SonarQube et Harbor)
   hosts: outils
+  become: true # IMPORTANT: Permet à Ansible d'utiliser sudo
   vars:
     projet_dest: /opt/devsecops
   tasks:
-    - name: Supprimer les anciens fichiers de dépôt pour éviter les conflits
+    - name: Supprimer les anciens fichiers corrompus
       file:
         path: "{{ item }}"
         state: absent
       loop:
         - /etc/apt/sources.list.d/trivy.list
         - /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+        - /usr/share/keyrings/trivy.gpg
+        - /usr/share/keyrings/docker-archive-keyring.gpg
 
     - name: Créer le répertoire pour les clés GPG
       file:
@@ -18,33 +21,49 @@
         state: directory
         mode: '0755'
 
-    - name: Télécharger la clé GPG de Trivy
+    # --- TRIVY ---
+    - name: Télécharger la clé GPG de Trivy (Format ASCII)
       get_url:
         url: https://aquasecurity.github.io/trivy-repo/deb/public.key
-        dest: /usr/share/keyrings/trivy.gpg
+        dest: /usr/share/keyrings/trivy.asc # CHANGÉ en .asc
         mode: '0644'
 
     - name: Ajouter le dépôt Trivy (Moderne)
       apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
+        repo: "deb [signed-by=/usr/share/keyrings/trivy.asc] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
         state: present
         filename: trivy
 
-    - name: Télécharger la clé GPG de Docker
+    # --- DOCKER ---
+    - name: Télécharger la clé GPG de Docker (Format ASCII)
       get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+        dest: /usr/share/keyrings/docker-archive-keyring.asc # CHANGÉ en .asc
         mode: '0644'
 
     - name: Configurer le dépôt Docker (Moderne)
       apt_repository:
-        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         filename: docker
 
+    # --- INSTALLATIONS ---
     - name: Installer Docker et Trivy
       apt:
-        name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release, python3-pip, python3-docker, openjdk-17-jdk, docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin, trivy]
+        name: 
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - python3-docker
+          - openjdk-17-jdk
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+          - trivy
         state: present
         update_cache: yes
 
@@ -55,7 +74,6 @@
         enabled: yes
       ignore_errors: yes
 
-    # ATTENTION: vm.max_map_count au moins égal à 262144 est exigé par Elasticsearch embarqué dans SonarQube
     - name: Configurer vm.max_map_count (pour SonarQube)
       sysctl:
         name: vm.max_map_count
