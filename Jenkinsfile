@@ -126,7 +126,7 @@ pipeline {
                     def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
                     withCredentials([
                         usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
-                        string(credentialsId: 'COSIGN_PASSWORD', variable: 'COSIGN_PWD'),
+                        string(credentialsId: 'COSIGN_PASSWORD', variable: 'COSIGN_PASSPHRASE'),
                         file(credentialsId: 'COSIGN_KEY', variable: 'KEY_FILE'),
                         usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')
                     ]) {
@@ -138,7 +138,7 @@ pipeline {
                             mkdir -p \$DOCKER_CONFIG
                             echo '${DOCKER_PASS}' | docker --config \$DOCKER_CONFIG login -u '${DOCKER_USER}' --password-stdin
                             
-                            export COSIGN_PASSWORD='${COSIGN_PWD}'
+                            export COSIGN_PASSWORD='${COSIGN_PASSPHRASE}'
                             cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID}
                             
                             rm /tmp/cosign.key && rm -rf \$DOCKER_CONFIG
