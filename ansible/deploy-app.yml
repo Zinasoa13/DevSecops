@@ -35,12 +35,6 @@
       become: yes
       ignore_errors: yes
 
-    - name: Reset DB Volume (Fix Access Denied)
-      shell: "docker compose down -v"
-      args:
-        chdir: "{{ projet_dest }}"
-      ignore_errors: yes
-
     - name: Démarrer ou mettre à jour la stack de production (App + MySQL)
       shell: |
         export DOCKER_CONFIG=/tmp/docker_deploy_config

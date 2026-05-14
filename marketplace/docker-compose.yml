@@ -3,11 +3,12 @@ services:
   marketplace-app:
     image: sushibaka/marketplace-app:latest
     container_name: marketplace_app
+    restart: always
     ports:
       - "8082:8082"
     environment:
       # Injectées soit par .env soit par Ansible au déploiement en Prod
-      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST:-marketplace-db}:${DB_PORT:-3306}/${DB_NAME:-marketplace}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_URL=jdbc:mysql://marketplace-db:3306/${DB_NAME:-marketplace}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=${DB_USER:-root}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-root}
       - SPRING_MAIL_HOST=smtp.gmail.com
@@ -19,7 +20,8 @@ services:
     volumes:
       - qrcodes_data:/app/qrcodes
     depends_on:
-      - marketplace-db
+      marketplace-db:
+        condition: service_healthy
 
   marketplace-db:
     image: mysql:8.0
