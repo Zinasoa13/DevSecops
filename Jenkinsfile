@@ -144,7 +144,8 @@ pipeline {
                 script {
                     def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
                     withCredentials([
-                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')
+                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
+                        usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')
                     ]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
