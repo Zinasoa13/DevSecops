@@ -31,12 +31,6 @@
       command: docker compose up -d --pull always
       args:
         chdir: "{{ projet_dest }}"
-      environment:
-        # Variables d'environnement pour configurer l'application dynamiquement (sans secrets en dur)
-        DB_USER: "{{ db_user }}"
-        DB_PASSWORD: "{{ db_password }}"
-        MAIL_USER: "{{ mail_user }}"
-        MAIL_PASSWORD: "{{ mail_password }}"
 
     - name: Vérifier que l'application est bien en ligne (Port 8082)
       wait_for:
