@@ -136,5 +136,46 @@ pipeline {
                 }
             }
         }
+
+        stage('Déploiement avec Ansible (Remote)') {
+            steps {
+                script {
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
+                    withCredentials([
+                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
+                        usernamePassword(credentialsId: 'db-credentials', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER'),
+                        usernamePassword(credentialsId: 'mail-credentials', passwordVariable: 'MAIL_PASS', usernameVariable: 'MAIL_USER')
+                    ]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        sshCommand remote: remote, command: """
+                            cd /opt/devsecops/ansible && \
+                            ansible-playbook -i inventory.ini deploy-app.yml \
+                              --extra-vars "db_user=${DB_USER} db_password=${DB_PASS} mail_user=${MAIL_USER} mail_password=${MAIL_PASS}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Vérification du Déploiement (Remote)') {
+            steps {
+                script {
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 60000]
+                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                        remote.user = SSH_USER
+                        remote.password = SSH_PASS
+                        sshCommand remote: remote, command: """
+                            echo "--- État des conteneurs ---"
+                            docker ps -a --filter name=marketplace
+                            echo "--- Logs de l'application (Dernières 50 lignes) ---"
+                            docker logs --tail 50 marketplace_app || true
+                            echo "--- Logs de la base de données (Dernières 50 lignes) ---"
+                            docker logs --tail 50 marketplace_db || true
+                        """
+                    }
+                }
+            }
+        }
     }
 }
