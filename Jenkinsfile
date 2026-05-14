@@ -12,6 +12,12 @@ pipeline {
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Initialisation & Sync Code (Remote)') {
             steps {
                 echo "Synchronisation du code vers l'hôte WSL via SSH..."
@@ -221,12 +227,14 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
+                    remote.timeout = 300000
 
                     retry(3) {
                         withCredentials([
                             usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
                             string(credentialsId: 'COSIGN_PASSWORD', variable: 'COSIGN_PWD'),
-                            file(credentialsId: 'COSIGN_KEY', variable: 'KEY_FILE')
+                            file(credentialsId: 'COSIGN_KEY', variable: 'KEY_FILE'),
+                            usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')
                         ]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
@@ -234,9 +242,21 @@ pipeline {
                             sshPut remote: remote, from: "${KEY_FILE}", into: "/tmp/cosign.key"
 
                             sshCommand remote: remote, command: """
-                                export COSIGN_PASSWORD=${COSIGN_PWD} && \
-                                cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID} && \
+                                # Authentification pour Cosign via variables d'environnement
+                                export COSIGN_PASSWORD='${COSIGN_PWD}'
+                                export COSIGN_EXPERIMENTAL=true
+                                
+                                # On utilise le token Docker directement pour l'authentification de Cosign
+                                export DOCKER_CONFIG=/tmp/.docker
+                                mkdir -p /tmp/.docker
+                                echo '{"auths": {"https://index.docker.io/v1/": {"auth": "'$(echo -n ${DOCKER_USER}:${DOCKER_PASS} | base64)'"}}}' > /tmp/.docker/config.json
+                                
+                                # Signature
+                                cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID}
+                                
+                                # Nettoyage
                                 rm /tmp/cosign.key
+                                rm -rf /tmp/.docker
                             """
                         }
                     }
