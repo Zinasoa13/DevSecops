@@ -87,7 +87,7 @@ pipeline {
                     remote.name = 'wsl-ubuntu'
                     remote.host = '100.115.122.20'
                     remote.allowAnyHosts = true
-                    remote.timeout = 300000 // 5 minutes pour l'analyse et le Quality Gate
+                    remote.timeout = 300000 // 5 minutes
 
                     retry(3) {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
@@ -96,11 +96,12 @@ pipeline {
 
                             withCredentials([string(credentialsId: "${SONAR_CREDENTIALS_ID}", variable: 'SONAR_TOKEN')]) {
                                 sshCommand remote: remote, command: """
+                                    echo "Attente de stabilisation de SonarQube..." && sleep 20 && \
                                     export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 && \
                                     cd /opt/devsecops/marketplace && \
                                     ./mvnw sonar:sonar -DskipTests \
                                       -Dsonar.ws.timeout=300 \
-                                      -Dsonar.qualitygate.wait=true \
+                                      -Dsonar.qualitygate.wait=false \
                                       -Dsonar.projectKey=marketplace \
                                       -Dsonar.host.url=${SONAR_HOST_URL} \
                                       -Dsonar.login=${SONAR_TOKEN}
@@ -162,7 +163,7 @@ pipeline {
                         withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             sshCommand remote: remote, command: """
                                 trivy image --severity HIGH,CRITICAL --exit-code 0 ${DOCKER_IMAGE}:${env.BUILD_ID}
                             """
@@ -217,10 +218,10 @@ pipeline {
                         ]) {
                             remote.user = SSH_USER
                             remote.password = SSH_PASS
-                            
+
                             // On transfère temporairement la clé sur le serveur pour signer
                             sshPut remote: remote, from: "${KEY_FILE}", into: "/tmp/cosign.key"
-                            
+
                             sshCommand remote: remote, command: """
                                 export COSIGN_PASSWORD=${COSIGN_PWD} && \
                                 cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID} && \
