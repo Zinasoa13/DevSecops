@@ -128,7 +128,7 @@ pipeline {
                             echo '${DOCKER_PASS}' | docker --config \$DOCKER_CONFIG login -u '${DOCKER_USER}' --password-stdin
                             
                             export COSIGN_PASSWORD='${COSIGN_PWD}'
-                            cosign sign --key /tmp/cosign.key --yes --repository index.docker.io ${DOCKER_IMAGE}:${env.BUILD_ID}
+                            cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID}
                             
                             rm /tmp/cosign.key && rm -rf \$DOCKER_CONFIG
                         """
