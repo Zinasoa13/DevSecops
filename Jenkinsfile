@@ -65,7 +65,7 @@ pipeline {
                     remote.password = env.SSH_PSW
                     sshCommand remote: remote, command: """
                         export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-                        cd /opt/devsecops/marketplace && ./mvnw sonar:sonar -Dsonar.qualitygate.wait=false -Dsonar.projectKey=marketplace -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.login=${env.SONAR_TOKEN}
+                        cd /opt/devsecops/marketplace && ./mvnw sonar:sonar -Dsonar.qualitygate.wait=true -Dsonar.projectKey=marketplace -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.login=${env.SONAR_TOKEN}
                     """
                 }
             }
