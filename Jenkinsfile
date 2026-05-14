@@ -99,12 +99,21 @@ pipeline {
             steps {
                 script {
                     def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 1200000]
-                    withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+                    withCredentials([
+                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
+                        usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')
+                    ]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
                         sshCommand remote: remote, command: """
+                            export DOCKER_CONFIG=/tmp/docker_trivy_config
+                            mkdir -p \$DOCKER_CONFIG
+                            echo '${DOCKER_PASS}' | docker --config \$DOCKER_CONFIG login -u '${DOCKER_USER}' --password-stdin
+                            
                             trivy --cache-dir /tmp/trivy-cache image --download-db-only --timeout 20m
                             trivy --cache-dir /tmp/trivy-cache image --timeout 20m --severity HIGH,CRITICAL --exit-code 0 ${DOCKER_IMAGE}:${env.BUILD_ID}
+                            
+                            rm -rf \$DOCKER_CONFIG
                         """
                     }
                 }

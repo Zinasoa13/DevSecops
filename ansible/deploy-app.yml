@@ -27,11 +27,12 @@
           MAIL_USER=sushibaka36@gmail.com
           MAIL_PASSWORD=tgkmyjjrczvzghjm
 
-    - name: Fix Docker Config Remote (Désactiver desktop.exe)
-      shell: |
-        if [ -f ~/.docker/config.json ]; then
-          sed -i 's/"credsStore": "desktop.exe"//g' ~/.docker/config.json
-        fi
+    - name: Sanitize Docker Config (User & Root)
+      shell: "mkdir -p ~/.docker && echo '{}' > ~/.docker/config.json"
+
+    - name: Ensure /root/.docker is clean
+      shell: "mkdir -p /root/.docker && echo '{}' > /root/.docker/config.json"
+      become: yes
       ignore_errors: yes
 
     - name: Démarrer ou mettre à jour la stack de production (App + MySQL)
