@@ -11,46 +11,46 @@ pipeline {
         SSH_PROD_CREDENTIALS_ID = 'ssh-ubuntu-root'
     }
 
-    stages {
-        stage('Initialisation & Sync Code (Remote)') {
-            steps {
-                echo "Synchronisation du code vers l'hôte WSL via SSH..."
-                script {
-                    def remote = [:]
-                    remote.name = 'wsl-ubuntu'
-                    remote.host = '100.115.122.20'
-                    remote.allowAnyHosts = true
-                    remote.timeout = 60000
+    stage('Initialisation & Sync Code (Remote)') {
+		steps {
+			echo "Synchronisation du code vers l'hôte WSL via SSH..."
+			script {
+				def remote = [:]
+				remote.name = 'wsl-ubuntu'
+				remote.host = '100.115.122.20'
+				remote.allowAnyHosts = true
+				remote.timeout = 60000
 
-                    retry(3) {
-                        withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
-                            remote.user = SSH_USER
-                            remote.password = SSH_PASS
+				retry(3) {
+					withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
+						remote.user = SSH_USER
+						remote.password = SSH_PASS
 
-                            echo "Test de connexion et sécurisation des droits..."
-                            // Utilisation de echo $SSH_PASS | sudo -S pour passer le mot de passe automatiquement
-                            sshCommand remote: remote, command: """
-                                echo '${SSH_PASS}' | sudo -S mkdir -p /opt/devsecops && \
-                                echo '${SSH_PASS}' | sudo -S chown -R ${SSH_USER} /opt/devsecops
-                            """
+						echo "Préparation propre du répertoire..."
+						// 1. On supprime tout ce qui existe pour éviter les conflits de droits
+						// 2. On recrée le dossier proprement en tant que ${SSH_USER}
+						sshCommand remote: remote, command: """
+							sudo rm -rf /opt/devsecops/marketplace /opt/devsecops/ansible /opt/devsecops/serveurs
+							sudo mkdir -p /opt/devsecops
+							sudo chown -R ${SSH_USER}:${SSH_USER} /opt/devsecops
+						"""
 
-                            echo "Transfert des fichiers (Ansible, Marketplace, Serveurs)..."
-                            // Maintenant SFTP va fonctionner car le dossier t'appartient !
-                            sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
-                            sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
-                            sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
+						echo "Transfert des fichiers..."
+						// Maintenant que le dossier est vide et t'appartient, sshPut va réussir
+						sshPut remote: remote, from: 'ansible', into: '/opt/devsecops'
+						sshPut remote: remote, from: 'marketplace', into: '/opt/devsecops'
+						sshPut remote: remote, from: 'serveurs', into: '/opt/devsecops'
 
-                            echo "Exécution du playbook d'infrastructure..."
-                            // On passe le mot de passe à Ansible via ansible_become_pass pour qu'il puisse installer Docker
-                            sshCommand remote: remote, command: """
-                                cd /opt/devsecops/ansible && \
-                                ansible-playbook -i inventory.ini setup-tools.yml --extra-vars "ansible_become_pass='${SSH_PASS}'"
-                            """
-                        }
-                    }
-                }
-            }
-        }
+						echo "Exécution du playbook d'infrastructure..."
+						sshCommand remote: remote, command: """
+							cd /opt/devsecops/ansible && \
+							ansible-playbook -i inventory.ini setup-tools.yml --extra-vars "ansible_become_pass='${SSH_PASS}'"
+						"""
+					}
+				}
+			}
+		}
+	}
 
         stage('Build Maven (Remote)') {
             steps {
