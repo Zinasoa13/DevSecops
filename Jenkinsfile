@@ -10,10 +10,16 @@ pipeline {
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Initialisation & Sync Code (Remote)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 60000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 60000]
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
@@ -34,7 +40,7 @@ pipeline {
         stage('Build Maven (Remote)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 60000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 60000]
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
@@ -50,7 +56,7 @@ pipeline {
         stage('Test & Analyse Statique (Audit Mode)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 300000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 300000]
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
@@ -68,7 +74,7 @@ pipeline {
         stage('Construction Image Docker (Isolée)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
                     withCredentials([
                         usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
                         usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}", passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')
@@ -90,7 +96,7 @@ pipeline {
         stage('Sécurité : Scan Trivy (Remote)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 1200000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 1200000]
                     withCredentials([usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
@@ -106,7 +112,7 @@ pipeline {
         stage('Sécurité : Signature Cosign (Remote)') {
             steps {
                 script {
-                    def remote = [host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
+                    def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
                     withCredentials([
                         usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
                         string(credentialsId: 'COSIGN_PASSWORD', variable: 'COSIGN_PWD'),
