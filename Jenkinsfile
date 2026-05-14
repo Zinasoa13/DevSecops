@@ -249,7 +249,7 @@ pipeline {
                                 # On utilise le token Docker directement pour l'authentification de Cosign
                                 export DOCKER_CONFIG=/tmp/.docker
                                 mkdir -p /tmp/.docker
-                                echo '{"auths": {"https://index.docker.io/v1/": {"auth": "'$(echo -n ${DOCKER_USER}:${DOCKER_PASS} | base64)'"}}}' > /tmp/.docker/config.json
+                                echo '{"auths": {"https://index.docker.io/v1/": {"auth": "'\$(echo -n ${DOCKER_USER}:${DOCKER_PASS} | base64)'"}}}' > /tmp/.docker/config.json
                                 
                                 # Signature
                                 cosign sign --key /tmp/cosign.key --yes ${DOCKER_IMAGE}:${env.BUILD_ID}
