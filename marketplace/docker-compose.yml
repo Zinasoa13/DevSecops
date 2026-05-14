@@ -7,7 +7,7 @@ services:
       - "8082:8082"
     environment:
       # Injectées soit par .env soit par Ansible au déploiement en Prod
-      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST:-marketplace-db}:${DB_PORT:-3306}/${DB_NAME:-marketplace}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${DB_HOST:-marketplace-db}:${DB_PORT:-3306}/${DB_NAME:-marketplace}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=${DB_USER:-root}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-root}
       - SPRING_MAIL_HOST=smtp.gmail.com
