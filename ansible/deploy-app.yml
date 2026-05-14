@@ -17,6 +17,16 @@
         src: ../marketplace/docker-compose.yml
         dest: "{{ projet_dest }}/docker-compose.yml"
 
+    - name: Créer le fichier .env pour Docker Compose
+      copy:
+        dest: "{{ projet_dest }}/.env"
+        content: |
+          DB_USER=root
+          DB_PASSWORD=root
+          DB_NAME=marketplace
+          MAIL_USER=sushibaka36@gmail.com
+          MAIL_PASSWORD=tgkmyjjrczvzghjm
+
     - name: Démarrer ou mettre à jour la stack de production (App + MySQL)
       command: docker compose up -d --pull always
       args:

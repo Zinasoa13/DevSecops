@@ -26,8 +26,8 @@ services:
     image: mysql:8.0
     container_name: marketplace_db
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
-      - MYSQL_DATABASE=${DB_NAME:-marketplace}
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=marketplace
     networks:
       - marketplace_net
     volumes:

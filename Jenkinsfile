@@ -85,7 +85,9 @@ pipeline {
                             export DOCKER_CONFIG=/tmp/docker_config
                             mkdir -p \$DOCKER_CONFIG
                             echo '${DOCKER_PASS}' | docker --config \$DOCKER_CONFIG login -u '${DOCKER_USER}' --password-stdin
-                            cd /opt/devsecops/marketplace && docker --config \$DOCKER_CONFIG build -t ${DOCKER_IMAGE}:${env.BUILD_ID} .
+                            cd /opt/devsecops/marketplace && docker --config \$DOCKER_CONFIG build -t ${DOCKER_IMAGE}:${env.BUILD_ID} -t ${DOCKER_IMAGE}:latest .
+                            docker --config \$DOCKER_CONFIG push ${DOCKER_IMAGE}:${env.BUILD_ID}
+                            docker --config \$DOCKER_CONFIG push ${DOCKER_IMAGE}:latest
                             rm -rf \$DOCKER_CONFIG
                         """
                     }
@@ -142,16 +144,13 @@ pipeline {
                 script {
                     def remote = [name: 'wsl-ubuntu', host: '100.115.122.20', allowAnyHosts: true, timeout: 600000]
                     withCredentials([
-                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER'),
-                        usernamePassword(credentialsId: 'db-credentials', passwordVariable: 'DB_PASS', usernameVariable: 'DB_USER'),
-                        usernamePassword(credentialsId: 'mail-credentials', passwordVariable: 'MAIL_PASS', usernameVariable: 'MAIL_USER')
+                        usernamePassword(credentialsId: "${SSH_PROD_CREDENTIALS_ID}", passwordVariable: 'SSH_PASS', usernameVariable: 'SSH_USER')
                     ]) {
                         remote.user = SSH_USER
                         remote.password = SSH_PASS
                         sshCommand remote: remote, command: """
                             cd /opt/devsecops/ansible && \
-                            ansible-playbook -i inventory.ini deploy-app.yml \
-                              --extra-vars "db_user=${DB_USER} db_password=${DB_PASS} mail_user=${MAIL_USER} mail_password=${MAIL_PASS}"
+                            ansible-playbook -i inventory.ini deploy-app.yml
                         """
                     }
                 }
