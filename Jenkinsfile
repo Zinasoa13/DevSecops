@@ -150,7 +150,8 @@ pipeline {
                         remote.password = SSH_PASS
                         sshCommand remote: remote, command: """
                             cd /opt/devsecops/ansible && \
-                            ansible-playbook -i inventory.ini deploy-app.yml
+                            ansible-playbook -i inventory.ini deploy-app.yml \
+                            -e "docker_user=${DOCKER_USER}" -e "docker_pass=${DOCKER_PASS}"
                         """
                     }
                 }
